@@ -1,0 +1,66 @@
+import socket
+import atexit
+
+# Local IP/Port for the honeypot to listen on (TCP)
+LHOST = '0.0.0.0'
+LPORT = 23
+
+# Remote IP/Port to send the log data to (TCP)
+RHOST = '192.168.1.210'
+RPORT = 9000
+
+# Banner displayed when connecting to the honeypot
+BANNER = 'Ubuntu 14.04 LTS\nlogin: '
+
+# Socket timeout in seconds
+TIMEOUT = 10
+
+def main():
+    print '[*] Honeypot starting on ' + LHOST + ':' + str(LPORT)
+    atexit.register(exit_handler)
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind((LHOST, LPORT))
+    listener.listen(5)
+    while True:
+        (insock, address) = listener.accept()
+        insock.settimeout(TIMEOUT)
+        print '[*] Honeypot connection from ' + address[0] + ':' + str(address[1]) + ' on port ' + str(LPORT)
+        try:
+            insock.send(BANNER)
+            data = insock.recv(1024)
+        except socket.error, e:
+            sendLog(address[0],'Error: ' + str(e))
+        else:
+            sendLog(address[0],data)
+        finally:
+            insock.close()
+
+def sendLog(fromip, message):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.connect((RHOST, RPORT))
+    s.send('IP:' + fromip + ' Port:' + str(LPORT) + ' | ' + message.replace('\r\n', ' '))
+    s.close()
+
+def exit_handler():
+    print '\n[*] Honeypot is shutting down!'
+    listener.close()
+
+listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+if __name__ == '__main__':
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
+        
+Reference: https://github.com/joeylane/honeypot.py
+
+	The heuristic engine used by an antimalware program might include rules for the following:
+•	a program which tries to copy itself into other programs (in other words, a classic computer virus)
+•	a program which tries to write directly to the disk
+•	a program which tries to remain resident in memory after it has finished executing
+•	a program which decrypts itself when run (a method often used by malware to avoid signature scanners)
+•	a program which binds to a TCP/IP port and listens for instructions over a network connection (this is pretty much what a bot—also sometimes called drones or zombies—do)
+•	a program which attempts to manipulate (copy, delete, modify, rename, replace and so forth) files which are required by the operating system
+•	a program which is like programs already known to be malicious
+
+Reference: https://www.welivesecurity.com/2010/12/29/what-are-heuristics/
